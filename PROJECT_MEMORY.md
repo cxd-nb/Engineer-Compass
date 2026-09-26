@@ -396,3 +396,14 @@ YOLOv8 训练识别 16 类物品：青椒、白菜、黄瓜、豆腐、茄子、
   - `smoke_expense` 那批冒烟同样认 `PROBE_API`，对隔离栈跑时 `PROBE_DB` 必须一起给（`openProbeDb` 的强制闸门）
 - **验证**：`probe_honor` **81/81**；回归 `probe_share` 56/56、`probe_share_folder` 39/39、`probe_share_gitee` 34/34（这三条必跑——`App.vue`/`main.scss` 是被共享的文件）、`smoke_ghost` 30/30、`smoke_friends` 25/25、`smoke_notifications` 10/10、`smoke_privacy` 36/36；前端 build 通过；浅色 + `html.ghost-mode` 暗色 + 375px 三张截图人工过目（暗色无白块、375px 无横向溢出、两行仍在跑）
 - **上线注意**：`uploads/` 被 gitignore 且 `deploy.sh` 只备份 `compass.db` → **线上图片要管理员在服务器后台重传一次**（不随 git 走）
+
+## 2026-09-26 荣誉墙呈现升级：盛典 Hero + 双视图（流动展厅 / 荣誉殿堂）+ 金银铜分级
+
+- **需求**：用户「荣誉墙页呈现方式更加丰富和具有设计感」。在**不动 81 项探针口径、不改后端/数据模型**的前提下做纯前端增强（`HonorView.vue` 单文件）
+- **三块新内容**：
+  - **盛典 Hero**：深色底（浅主题海军蓝、幽灵模式近黑红）+ 网格纹 + 金色奖杯奖牌（SVG，conic-gradient 金圈 + 旋转光环）+ 闪烁星芒 + 金色渐变标题 + 玻璃质感统计块（荣誉总数 / 国家级·国际级 / 获奖年份，年份从 `award_date` 前 4 位去重统计）。背景/星芒/光环全部 `aria-hidden` 且 `prefers-reduced-motion` 下停掉
+  - **双视图切换**（分段控件，偏好存 `localStorage.honor_mode`，但**默认永远是 flow**——探针不切视图）：①「流动展厅」= 原有多行反向跑马灯；②「荣誉殿堂」= 证书**网格**（`auto-fill minmax(236px,1fr)`），图更大（168px）、带 `description`、底部日期+获奖者
+  - **荣誉分级 t-gold/silver/bronze**：按授予范围正则匹配（`国际|国家|全国|世界…` = 金，`省|部|大区|赛区|华东…` = 银，`市|校|院…` = 铜）。原始 `award_level` 文案照常全显，分级只决定**顶边色条 `.haccent` + 等级胶囊 `.htier` + 奖牌点 `.tdot` + hover 阴影/描边**的配色
+- **★ 装饰绝不能碰跑马灯宽度等式**：`.haccent/.tdot` 一律 `position:absolute`（不进 flex 流、不改卡片外宽）；网格用**独立类名** `.hall-grid/.gcard/.gpic`，与 `.marquee/.hcard/.hpic` 完全分开，v-if 切换、跑马灯卸载时 `.marquee/.hcard` 整体不在场 → 81 项里所有 marquee 选择器断言不受影响。跑马灯卡 `min-height` 因多了一行等级胶囊从 `+101px` 调到 `+126px`（最坏情况重算：图盒 + padding + 4×gap + 标题2行 + 胶囊 + 日期 + 获奖者）
+- **★★ 本轮最大坑：scoped 块里 `:global(html.ghost-mode) { .hero {…} }` 会被 Sass 吞掉后代选择器** —— 编译产物变成裸 `html.ghost-mode { --hero-a… }`，自定义属性落在 `<html>` 上，而 `.hero` 自身在类选择器（特异性 0-1-0）上也声明了同名变量 → 就近且更特异，`<html>` 上的覆盖**永远赢不了**。症状：幽灵模式 Hero 中央始终泛海军蓝。**修法：另起一个非 scoped 的 `<style lang="scss">` 块**，写完整选择器 `html.ghost-mode .honor-page .hero { … }`（特异性 0-2-1，稳赢；`.honor-page` 前缀收窄不外泄）。判别手段：`document.elementsFromPoint` + `getComputedStyle` 读 `--hero-*` 实际值，别只看截图猜
+- **验证**：`probe_honor` **81/81**（重构样式块前后各跑一次）；`vite build` 通过；另写一次性脚本种 9 条金/银/铜真实感数据，对 流动/殿堂 × 浅色/暗色 四态截图人工过目（分级配色分明、暗色 Hero 红黑无蓝、375px 无溢出）。临时诊断脚本与截图、临时后端/库、临时端口 3106/5198 均已清理

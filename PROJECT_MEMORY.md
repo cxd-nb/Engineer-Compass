@@ -407,3 +407,13 @@ YOLOv8 训练识别 16 类物品：青椒、白菜、黄瓜、豆腐、茄子、
 - **★ 装饰绝不能碰跑马灯宽度等式**：`.haccent/.tdot` 一律 `position:absolute`（不进 flex 流、不改卡片外宽）；网格用**独立类名** `.hall-grid/.gcard/.gpic`，与 `.marquee/.hcard/.hpic` 完全分开，v-if 切换、跑马灯卸载时 `.marquee/.hcard` 整体不在场 → 81 项里所有 marquee 选择器断言不受影响。跑马灯卡 `min-height` 因多了一行等级胶囊从 `+101px` 调到 `+126px`（最坏情况重算：图盒 + padding + 4×gap + 标题2行 + 胶囊 + 日期 + 获奖者）
 - **★★ 本轮最大坑：scoped 块里 `:global(html.ghost-mode) { .hero {…} }` 会被 Sass 吞掉后代选择器** —— 编译产物变成裸 `html.ghost-mode { --hero-a… }`，自定义属性落在 `<html>` 上，而 `.hero` 自身在类选择器（特异性 0-1-0）上也声明了同名变量 → 就近且更特异，`<html>` 上的覆盖**永远赢不了**。症状：幽灵模式 Hero 中央始终泛海军蓝。**修法：另起一个非 scoped 的 `<style lang="scss">` 块**，写完整选择器 `html.ghost-mode .honor-page .hero { … }`（特异性 0-2-1，稳赢；`.honor-page` 前缀收窄不外泄）。判别手段：`document.elementsFromPoint` + `getComputedStyle` 读 `--hero-*` 实际值，别只看截图猜
 - **验证**：`probe_honor` **81/81**（重构样式块前后各跑一次）；`vite build` 通过；另写一次性脚本种 9 条金/银/铜真实感数据，对 流动/殿堂 × 浅色/暗色 四态截图人工过目（分级配色分明、暗色 Hero 红黑无蓝、375px 无溢出）。临时诊断脚本与截图、临时后端/库、临时端口 3106/5198 均已清理
+
+## 2026-09-27 荣誉墙新增「精选」Apple 极简编辑流并设为默认（三视图：精选/流动/殿堂）
+
+- **需求**：用户「能不能参考其他网页设计」→「我来搜索优秀案例」（环境拦了 WebSearch/Awwwards/Dribbble，靠我熟悉的流派给方向）→ 用户挑 **极简编辑风（Apple）**，参考 Apple 产品页 / Linear / Stripe。打断过一次（「先暂停」），09-27 继续
+- **★ 口径变化：默认着陆视图从跑马灯改成「精选」编辑流**（`mode` 默认 `editorial`，09-26 那条「默认永远是 flow」作废）。现在共三视图：`editorial`（精选）/ `flow`（流动跑马灯）/ `hall`（殿堂网格），靠底部**固定悬浮玻璃 dock**（`.mode-dock`，z-index:1000；查看器 z-index:3000 在它之上，Esc/点击不冲突）切换，偏好仍存 `localStorage.honor_mode`
+- **精选流的 Apple 语法**：① Hero 占近一屏（`min-height: calc(100vh - 120px)`），居中 eyebrow「HALL OF HONOR」+ `clamp(52px,9vw,96px)` 大标题 + 一行统计 + 滚动提示（纵向滑线）；② **一屏一项** `.ecard`：mono 序号 `01` + `·` + 等级 kicker（顶部）→ 超大标题（`clamp(26px,3.4vw,40px)`，首项 feature 更大）→ 软阴影卡纸相框 `.e-pic`（大圆角22 + 柔和环境阴影，像 Apple 产品图；hover 上浮）→「点击图片查看大图」→ 日期·获奖者 → 描述；③ 结尾「已展示全部 N 项荣誉」
+- **滚动渐显的内容安全口径（★★）**：**默认全可见**，只有在 JS 确认 `IntersectionObserver` 可用且未降级时才给容器加 `.js-reveal`（此时未进视口的 .ecard 才隐藏）。脚本不跑/被拦/开了「减弱动态」→ 内容照样全显（**最坏的降级是内容不可达**，同跑马灯那条）。进视口加 `.in` 并 `unobserve`；同级内 kicker→标题→图→提示→meta→desc 微错峰（.07/.14/.2/.24/.3 delay）
+- **★ dock 只在有数据时渲染**（在 `v-else` 的 `<template>` 内），空态/加载/出错时不出现；滚动提示 `.e-cue` 因与 dock 相挤从 `bottom:18` 上移到 `bottom:84`（在 dock 上方）
+- **探针同步（`probe_honor.mjs`，81→84）**：主页面先断言 3 条精选口径（②⓪ `.ecard` 数=nPub / ②⓪② 图解码 / ②⓪③ dock 默认高亮「精选」），再 **click「流动」waitFor .marquee visible** 才跑原来整套跑马灯断言；窄屏(②㉒前)、降级(②㉕前)两处同样先切 flow。新增3条+原81=**84/84**；判别力靠那3条守着「默认是 editorial」
+- **验证**：`probe_honor` **84/84**；`vite build` 通过；9 条金/银/铜真实感数据对 桌面浅色/暗色/375px 截图人工过目（大留白居中、软阴影相框、近黑暗色红按钮、375px dock 不溢出）；临时脚本/截图/端口3106·5198/临时库均已清理

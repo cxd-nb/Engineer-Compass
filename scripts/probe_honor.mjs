@@ -264,6 +264,20 @@ try {
   await page.goto(`${WEB}/honor`, { waitUntil: 'networkidle' });
 
   const nPub = (await api('/honor')).list.length;
+
+  // 默认着陆是「精选」编辑流：一条不少、图真的解码、dock 高亮在精选
+  const eCards = await page.locator('.ecard').count();
+  ok('②⓪ 默认是精选编辑视图且一条荣誉不少', eCards === nPub, `${eCards} / ${nPub}`);
+  const eImgs = await page.locator('.ecard img').all();
+  let eDecoded = 0;
+  for (const im of eImgs.slice(0, 6)) eDecoded += (await im.evaluate((el) => el.naturalWidth > 0)) ? 1 : 0;
+  ok('②⓪② 精选视图奖状图片真的解码了', eDecoded === Math.min(6, eImgs.length), `${eDecoded}`);
+  const dockOn = await page.locator('.mode-dock button.on').textContent();
+  ok('②⓪③ 视图切换 dock 默认高亮「精选」', dockOn === '精选', `"${dockOn}"`);
+  // 切到「流动展厅」再跑下面整套跑马灯断言
+  await page.locator('.mode-dock button', { hasText: '流动' }).click();
+  await page.locator('.marquee').first().waitFor({ state: 'visible' });
+
   const cards = await page.locator('.hcard').count();
   ok('②① 公开页渲染出卡片（匿名/普通用户都能看）', cards > 0, `${cards}`);
   ok('②② 卡片数是「两份副本 × 半份」的整数倍（无缝循环的前提）', cards % 2 === 0 && cards >= nPub, `${cards} 张 / ${nPub} 条`);
@@ -406,6 +420,8 @@ try {
   await seedAuth(pageN, tb, rb.user);
   await pageN.goto(`${WEB}/honor`, { waitUntil: 'networkidle' });
   const overflow = await pageN.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  await pageN.locator('.mode-dock button', { hasText: '流动' }).click();
+  await pageN.locator('.marquee').first().waitFor({ state: 'visible' });
   const rowsN = await pageN.locator('.marquee').count();
   ok('②㉒ 375px 无横向溢出（行是 overflow:hidden，不能把页面撑宽）', overflow <= 1, `${overflow}px`);
   ok('②㉓ 375px 收成 2 行', rowsN === 2, `${rowsN}`);
@@ -423,6 +439,8 @@ try {
   const pageR = await ctxR.newPage();
   await seedAuth(pageR, tb, rb.user);
   await pageR.goto(`${WEB}/honor`, { waitUntil: 'networkidle' });
+  await pageR.locator('.mode-dock button', { hasText: '流动' }).click();
+  await pageR.locator('.marquee').first().waitFor({ state: 'visible' });
   const animR = await pageR.locator('.marquee .track').first().evaluate((el) => getComputedStyle(el).animationName);
   const copiesR = await pageR.locator('.marquee').first().locator('.half').count();
   const scrollR = await pageR.locator('.marquee').first().evaluate((el) => ({ ox: getComputedStyle(el).overflowX, sw: el.scrollWidth, cw: el.clientWidth }));
